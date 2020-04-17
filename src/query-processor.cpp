@@ -1,5 +1,6 @@
 #include "query-processor.h"
 #include "log.h"
+#include <cstdlib>
 #include <QStringList>
 #include <QRegExp>
 #include <QElapsedTimer>
@@ -27,6 +28,12 @@ extern bool log_to_console;
 
 QRegExp rx_value("\\$\\((\\d+)\\)");
 QRegExp rx_now("\\$\\(now(|\\+|-)(|\\d+)(|Y|M|D|h|m|s)\\)");
+
+std::string getEnvVar(const QString &key )
+{
+    char * val = std::getenv(key.toStdString().c_str());
+    return val == NULL ? std::string("") : std::string(val);
+}
 
 //---------------------------------------------------------------------------
 bool readConfig(const QString &filename)
@@ -87,7 +94,7 @@ bool readConfig(const QString &filename)
 
     if (param_name.compare("listen_address", Qt::CaseInsensitive) == 0)
     {
-      if (!proxyServer->listen_address.setAddress(param_value))
+      if (!proxyServer->listen_address.setAddress(QString::fromStdString(getEnvVar(param_value))))
       {
         qCritical("Configuration file %s parsing error on line %d: invalid parameter \"%s\" value", f.fileName().toUtf8().constData(), line_number+1, param_name.toUtf8().constData());
         return false;
@@ -96,7 +103,7 @@ bool readConfig(const QString &filename)
     else if (param_name.compare("listen_port", Qt::CaseInsensitive) == 0)
     {
       bool ok=false;
-      proxyServer->listen_port = param_value.toUShort(&ok);
+      proxyServer->listen_port = QString::fromStdString(getEnvVar(param_value)).toUShort(&ok);
       if (!ok || proxyServer->listen_port < 2)
       {
         qCritical("Configuration file %s parsing error on line %d: invalid parameter \"%s\" value", f.fileName().toUtf8().constData(), line_number+1, param_name.toUtf8().constData());
@@ -105,7 +112,7 @@ bool readConfig(const QString &filename)
     }
     else if (param_name.compare("dst_address", Qt::CaseInsensitive) == 0)
     {
-      proxyServer->dst_server_address = param_value;
+      proxyServer->dst_server_address = QString::fromStdString(getEnvVar(param_value));
       if (!QRegExp("[A-Za-z0-9.-]+").exactMatch(param_value))
       {
         qCritical("Configuration file %s parsing error on line %d: invalid parameter \"%s\" value", f.fileName().toUtf8().constData(), line_number+1, param_name.toUtf8().constData());
@@ -115,7 +122,7 @@ bool readConfig(const QString &filename)
     else if (param_name.compare("dst_port", Qt::CaseInsensitive) == 0)
     {
       bool ok=false;
-      int val = param_value.toInt(&ok);
+      int val = QString::fromStdString(getEnvVar(param_value)).toInt(&ok);
       if (!ok || val < 2 || val > 65535)
       {
         qCritical("Configuration file %s parsing error on line %d: invalid parameter \"%s\" value", f.fileName().toUtf8().constData(), line_number+1, param_name.toUtf8().constData());
